@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#040d21"><meta name="description" content="办公AI讲座终版。自由翻阅31页课件、完整讲稿、视频和工具资料。">
+<meta name="robots" content="noindex,nofollow"><title>办公 AI 讲座 · 课件与讲稿</title>
+<link rel="stylesheet" href="styles.css"><script src="lecture-data.js" defer></script><script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#reading">跳到本页内容</a>
+<header class="topbar"><a href="#slide-1" class="brand" aria-label="回到课件首页"><span class="brand-mark">AI</span><span>办公 AI 讲座<small>课件与完整讲稿</small></span></a><div class="header-actions"><button id="text-size" class="quiet" aria-label="调整讲稿字号">字号 A+</button><button id="open-toc" class="toc-button" aria-label="打开目录">目录 <span aria-hidden="true">☰</span></button></div></header>
+<main id="main" class="workspace">
+<section class="visual-column" aria-label="课件与视频"><div class="section-heading"><span id="chapter">认识与实践</span><span id="visual-page">01 / 31</span></div>
+<div id="slide-stage" class="slide-stage"><button id="zoom-slide" aria-label="放大当前课件"><img id="slide-image" width="1920" height="1080" alt="" fetchpriority="high"></button><div id="slide-video-thumb"></div><div id="slide-resource-hotspot"></div></div>
+<div class="slide-tools"><button id="zoom-link" class="text-button">放大课件 ↗</button><span>可自由翻页，按自己的节奏阅读</span></div>
+<div id="media-section" hidden></div>
+<div class="desktop-tip">课件画面与讲稿逐页对应。需要工具网址时，打开「工具与资料」。</div>
+</section>
+<section class="reading-column" id="reading" tabindex="-1"><div class="reading-title"><span id="page-label" class="eyebrow">第 1 页</span><h1 id="page-title"></h1></div>
+<div role="tablist" class="tabs" aria-label="本页内容"><button role="tab" id="tab-talk" data-view="talk" aria-selected="true" aria-controls="content-panel">讲稿</button><button role="tab" id="tab-text" data-view="text" aria-selected="false" aria-controls="content-panel">课件文字</button><button role="tab" id="tab-resources" data-view="resources" aria-selected="false" aria-controls="content-panel">工具与资料</button></div>
+<article id="content-panel" role="tabpanel" aria-labelledby="tab-talk"></article>
+<div class="reading-end"><a href="manuscript.html" target="_blank" rel="noopener">查看完整讲稿 ↗</a><button id="copy-note" class="text-button">复制本页讲稿</button></div>
+</section>
+</main>
+<nav class="page-nav" aria-label="课件翻页"><button id="prev" aria-label="上一页">← <span>上一页</span></button><button id="page-picker" aria-label="通过目录选择页码"><strong id="current-page">1</strong><span> / 31</span><span class="nav-menu">选择页面</span></button><button id="next" aria-label="下一页"><span>下一页</span> →</button><div id="progress" aria-hidden="true"></div></nav>
+<dialog id="toc-dialog" aria-labelledby="toc-title"><div class="dialog-head"><h2 id="toc-title">课件目录</h2><button id="close-toc" aria-label="关闭目录">关闭 ✕</button></div><label class="search-label" for="toc-search">按页码、标题或讲稿内容查找</label><input id="toc-search" type="search" placeholder="例如：数字人、画图、26" autocomplete="off"><div id="toc-list"></div><p id="toc-empty" hidden>没有找到相关页面，请换一个关键词。</p></dialog>
+<dialog id="zoom-dialog" aria-label="课件大图"><div class="dialog-head"><span>可双指缩放查看细节</span><button id="close-zoom" aria-label="关闭大图">关闭 ✕</button></div><div class="zoom-scroll"><img id="zoom-image" alt="当前课件大图"></div><a id="original-image" target="_blank" rel="noopener">单独打开原图 ↗</a></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<noscript><p class="noscript">请启用 JavaScript 自由翻页，或<a href="manuscript.html">直接查看完整课件与讲稿</a>。</p></noscript>
+</body></html>
