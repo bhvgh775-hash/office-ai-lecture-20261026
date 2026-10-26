@@ -3,7 +3,7 @@
  const data=window.LECTURE_DATA;
  if(!data?.slides?.length){document.querySelector('#page-title').textContent='课件尚未载入，请刷新页面';return;}
  const $=s=>document.querySelector(s),slides=data.slides,storeKey='office-ai-final-v05';
- let current=-1,view='talk',toastTimer,mediaResize,tocObserver;
+ let current=-1,view='talk',toastTimer,mediaResize,tocObserver,slideImageRequest=0,controlsTimer;
  // Viewing mode deliberately resets on each visit: first open always includes the script.
  let slidesOnly=false,presenting=false,modeBeforeFullscreen=false,scrollBeforeFullscreen=0,nativeFullscreenEntered=false;
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -60,6 +60,7 @@
  }
  function fitSlide(){
   if(!slidesOnly&&!presenting)return;
+  if(presenting){document.documentElement.style.setProperty('--stage-height',window.innerHeight+'px');return;}
   const top=presenting?$('#presentation-controls').getBoundingClientRect().height:$('.topbar').getBoundingClientRect().height;
   const bottom=$('.page-nav').getBoundingClientRect().height,heading=$('.section-heading').getBoundingClientRect().height;
   const tools=presenting?0:$('.slide-tools').getBoundingClientRect().height+12;
@@ -68,15 +69,26 @@
   document.documentElement.style.setProperty('--display-top',top+'px');
   document.documentElement.style.setProperty('--display-bottom',bottom+'px');
  }
+ function revealPresentationControls(){
+  if(!presenting)return;document.body.classList.remove('presentation-controls-hidden');clearTimeout(controlsTimer);
+  controlsTimer=setTimeout(()=>{
+   if(!presenting)return;
+   const focused=document.activeElement,inputFocused=focused instanceof Element&&(focused.matches('input,textarea,select')||focused.isContentEditable);
+   const keyboardControl=focused instanceof Element&&focused.closest('#presentation-controls,.page-nav')&&focused.matches(':focus-visible');
+   // A dialog, typed input or keyboard-focused control must stay visible while it is in use.
+   if(document.querySelector('dialog[open]')||inputFocused||keyboardControl){revealPresentationControls();return;}
+   document.body.classList.add('presentation-controls-hidden');
+  },2500);
+ }
  function updateView(){
   document.body.classList.toggle('slides-only',slidesOnly);document.body.classList.toggle('is-presenting',presenting);
   $('#presentation-controls').hidden=!presenting;$('#toggle-view').setAttribute('aria-pressed',String(slidesOnly));$('#toggle-view').textContent=slidesOnly?'课件＋讲稿':'只看课件';
   $('#text-size').hidden=slidesOnly;
-  requestAnimationFrame(fitSlide);
+  requestAnimationFrame(fitSlide);if(presenting)revealPresentationControls();
  }
  function fullscreenElement(){return document.fullscreenElement||document.webkitFullscreenElement;}
  function leavePresentation(){
-  if(!presenting)return;presenting=false;slidesOnly=modeBeforeFullscreen;nativeFullscreenEntered=false;updateView();
+  if(!presenting)return;presenting=false;slidesOnly=modeBeforeFullscreen;nativeFullscreenEntered=false;clearTimeout(controlsTimer);document.body.classList.remove('presentation-controls-hidden');updateView();
   requestAnimationFrame(()=>window.scrollTo({top:scrollBeforeFullscreen,behavior:'instant'}));
  }
  async function enterPresentation(){
@@ -90,17 +102,40 @@
   leavePresentation();
  }
  function fullscreenChanged(){if(!presenting)return;if(fullscreenElement()){nativeFullscreenEntered=true;fitSlide();}else if(nativeFullscreenEntered)leavePresentation();}
+ function loadSlideImage(s,page,retry=false){
+  const request=++slideImageRequest,stage=$('#slide-stage'),status=$('#slide-load-status');
+  stage.classList.add('is-loading');stage.setAttribute('aria-busy','true');status.hidden=false;
+  $('#slide-load-message').textContent='课件加载中…';$('#retry-slide').hidden=true;$('#zoom-slide').disabled=true;$('#zoom-link').disabled=true;
+  // Each request owns its image node. A late event from an earlier page cannot reveal stale content.
+  const candidate=new Image(1920,1080);candidate.id='slide-image';candidate.alt=`第${page}页：${s.title}`;candidate.fetchPriority='high';candidate.decoding='async';
+  let settled=false;
+  const finish=ok=>{
+   if(settled||request!==slideImageRequest)return;settled=true;
+   candidate.onload=null;candidate.onerror=null;
+   if(ok){
+    $('#slide-image').replaceWith(candidate);stage.classList.remove('is-loading');stage.setAttribute('aria-busy','false');status.hidden=true;$('#zoom-slide').disabled=false;$('#zoom-link').disabled=false;
+   }else{
+    stage.setAttribute('aria-busy','false');$('#slide-load-message').textContent='课件未能加载，请检查网络后重试。';$('#retry-slide').hidden=false;
+   }
+  };
+  candidate.onload=()=>finish(candidate.naturalWidth>0);candidate.onerror=()=>finish(false);
+  let src=s.image;
+  if(retry){const url=new URL(src,document.baseURI);if(/^https?:$/.test(url.protocol)){url.searchParams.set('_retry',Date.now());src=url.href;}}
+  candidate.src=src;
+  // A cached image can be committed within this same frame, without flashing the loading label.
+  if(candidate.complete&&candidate.naturalWidth>0)finish(true);
+ }
  function render(page,nextView){
   const pageChanged=current!==page-1;
   if(pageChanged){closeDialog('#media-dialog');closeDialog('#resources-dialog');}
   current=page-1;view=nextView;const s=slides[current];
   $('#page-title').textContent=s.title;$('#page-label').textContent=`第 ${page} 页`;$('#chapter').textContent=s.chapter;$('#visual-page').textContent=`${String(page).padStart(2,'0')} / ${slides.length}`;$('#current-page').textContent=page;
-  $('#slide-image').src=s.image;$('#slide-image').alt=`第${page}页：${s.title}`;$('#prev').disabled=page===1;$('#next').disabled=page===slides.length;$('#progress').style.width=(page/slides.length*100)+'%';document.title=`${page}. ${s.title} · 办公AI讲座`;
+  if(pageChanged)loadSlideImage(s,page);$('#prev').disabled=page===1;$('#next').disabled=page===slides.length;$('#progress').style.width=(page/slides.length*100)+'%';document.title=`${page}. ${s.title} · 办公AI讲座`;
   renderPanel();if(pageChanged)renderMedia(s);
   for(const id of ['#open-resources','#presentation-resources'])$(id).hidden=!s.links?.length;
   $('#slide-resource-hotspot').innerHTML=s.resourceGeometry?'<button class="resource-hotspot" aria-label="打开本页工具与资料"></button>':'';
   if(s.resourceGeometry){const [x,y,w,h]=s.resourceGeometry,b=$('.resource-hotspot');Object.assign(b.style,{left:x/19.2+'%',top:y/10.8+'%',width:w/19.2+'%',height:h/10.8+'%'});b.onclick=openResources;}
-  try{localStorage.setItem(storeKey,String(page))}catch{}window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(fitSlide);
+  try{localStorage.setItem(storeKey,String(page))}catch{}window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(fitSlide);if(presenting)revealPresentationControls();
   // At most one adjacent slide is prefetched; the directory loads its own thumbnails on demand.
   if(page<slides.length){const next=new Image();next.src=slides[page].image;}
  }
@@ -114,7 +149,8 @@
   $('#toc-list').querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{closeDialog('#toc-dialog');navigate(Number(b.dataset.page));});
  }
  function openToc(){$('#toc-search').value='';showDialog('#toc-dialog');toc();}
- function zoom(){const s=slides[current];$('#zoom-image').src=s.image;$('#zoom-image').alt=s.title;$('#original-image').href=s.image;showDialog('#zoom-dialog');}
+ function zoom(){if(presenting){revealPresentationControls();return;}const s=slides[current];$('#zoom-image').src=s.image;$('#zoom-image').alt=s.title;$('#original-image').href=s.image;showDialog('#zoom-dialog');}
+ $('#retry-slide').onclick=()=>loadSlideImage(slides[current],current+1,true);
  $('#open-toc').onclick=openToc;$('#page-picker').onclick=openToc;$('#presentation-toc').onclick=openToc;$('#close-toc').onclick=()=>closeDialog('#toc-dialog');$('#toc-search').oninput=e=>toc(e.target.value);
  $('#zoom-slide').onclick=zoom;$('#zoom-link').onclick=zoom;$('#close-zoom').onclick=()=>closeDialog('#zoom-dialog');$('#prev').onclick=()=>navigate(current);$('#next').onclick=()=>navigate(current+2);$('#copy-note').onclick=()=>copy((slides[current].talk||[]).join('\n\n'));
  $('#open-video').onclick=playMedia;$('#presentation-video').onclick=playMedia;$('#close-media').onclick=()=>closeDialog('#media-dialog');$('#media-dialog').addEventListener('close',stopMedia);
@@ -123,6 +159,7 @@
  let fontSize=18;try{fontSize=Number(localStorage.getItem(storeKey+'-font'))||18}catch{}document.documentElement.style.setProperty('--note-size',fontSize+'px');$('#text-size').onclick=()=>{fontSize=fontSize>=22?18:fontSize+2;document.documentElement.style.setProperty('--note-size',fontSize+'px');try{localStorage.setItem(storeKey+'-font',fontSize)}catch{}toast('讲稿字号 '+fontSize);};
  document.querySelectorAll('[role=tab]').forEach(b=>{b.onclick=()=>navigate(current+1,b.dataset.view);b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();const views=['talk','text','resources'],v=views[(views.indexOf(view)+(e.key==='ArrowRight'?1:2))%3];navigate(current+1,v);$('#tab-'+v).focus();};});
  document.addEventListener('keydown',e=>{
+  if(presenting)revealPresentationControls();
   if(e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey||e.isComposing)return;
   if(e.target instanceof Element&&(e.target.closest('input,textarea,select,[role=tab],video')||e.target.isContentEditable||e.target.closest('[contenteditable]:not([contenteditable="false"])')))return;
   if(document.querySelector('dialog[open]'))return;
@@ -131,6 +168,7 @@
  });
  for(const id of ['#toc-dialog','#zoom-dialog','#media-dialog','#resources-dialog'])$(id).addEventListener('click',e=>{if(e.target===$(id)){const r=$(id).getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeDialog(id);}});
  $('#toc-dialog').addEventListener('close',()=>tocObserver?.disconnect());
+ document.addEventListener('pointermove',revealPresentationControls,{passive:true});document.addEventListener('pointerdown',revealPresentationControls,{passive:true});document.addEventListener('focusin',revealPresentationControls);
  document.addEventListener('fullscreenchange',fullscreenChanged);document.addEventListener('webkitfullscreenchange',fullscreenChanged);window.addEventListener('resize',fitSlide);window.visualViewport?.addEventListener('resize',fitSlide);
  if('ResizeObserver' in window){const layoutObserver=new ResizeObserver(fitSlide);for(const selector of ['.topbar','.page-nav','#presentation-controls'])layoutObserver.observe($(selector));}
  window.addEventListener('hashchange',()=>{const r=route();render(r.page,r.view);});updateView();const initial=route();render(initial.page,initial.view);

@@ -26,3 +26,14 @@
 .toc-item img{height:auto;min-width:70px;background:#020814}.toc-item{min-height:70px}
 @media(max-width:760px){.topbar{gap:8px 12px}.display-actions{width:100%;justify-content:flex-end;border-top:1px solid #284c6766;padding-top:8px}.display-actions button{min-height:40px;padding:6px 12px}.slide-tools{align-items:flex-start}.slide-tools>span{display:none}.slides-only .workspace{padding:10px 12px}.slide-tool-actions{gap:14px}.presentation-title{display:none}.presentation-controls{justify-content:space-between;gap:4px;padding:6px 10px}.presentation-controls button{font-size:12px;padding:6px 8px}.is-presenting .workspace{padding:8px}.is-presenting .page-nav{min-height:55px}#media-dialog{padding:12px}}
 @media print{.display-actions,.presentation-controls{display:none!important}.slides-only .workspace{display:block;height:auto;padding:0}.slides-only .visual-column{display:block;height:auto}.slides-only .slide-stage{width:100%}.is-presenting{position:static;height:auto;overflow:visible}}
+
+/* Keep the image and its interactive overlays in one loading state when pages change. */
+.slide-stage.is-loading>#zoom-slide,.slide-stage.is-loading>#slide-video-thumb,.slide-stage.is-loading>#slide-resource-hotspot{visibility:hidden;pointer-events:none}
+.slide-load-status{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:#020814;color:var(--muted);font-size:14px}
+.slide-load-status button{font-size:14px;border-color:var(--accent);color:var(--accent)}
+
+/* Fullscreen uses the entire viewport; controls float above it and disappear after inactivity. */
+.is-presenting .workspace{top:0;height:100dvh;padding:0}
+.is-presenting .slide-stage{border:0}
+.is-presenting .presentation-controls,.is-presenting .page-nav{transition:opacity .2s ease;background:#071629d9}
+.is-presenting.presentation-controls-hidden .presentation-controls,.is-presenting.presentation-controls-hidden .page-nav{opacity:0;pointer-events:none}
